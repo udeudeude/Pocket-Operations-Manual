@@ -1,0 +1,9 @@
+{
+  "name": "Pocket Operations Manual · PO-35 Speak",
+  "short_name": "PO-35 Manual",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#131619",
+  "theme_color": "#17191c",
+  "description": "Interactive PO-35 Speak simulator and guided tutorial"
+}
