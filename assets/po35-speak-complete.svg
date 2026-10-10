@@ -230,9 +230,9 @@
 <text x="380" y="1007" font-size="17" font-style="italic">µ</text>
 </g>
 <g id="vertical-sidebar-labels" fill="#111" stroke="#111" font-family="Arial,sans-serif">
-<path d="M44 653 H35 V672 M44 691 H35 V709" stroke-width="2.4" fill="none"/>
+<path d="M44 641 H35 V656 M44 730 H35 V745" stroke-width="2.4" fill="none"/>
 <text transform="translate(48 716) rotate(-90)" font-size="17" stroke="none">VOICE</text>
-<path d="M44 816 H35 V832 M44 927 H35 V945" stroke-width="2.4" fill="none"/>
+<path d="M44 808 H35 V824 M44 954 H35 V971" stroke-width="2.4" fill="none"/>
 <text transform="translate(48 941) rotate(-90)" font-size="17" stroke="none">EFFECT</text>
 <path d="M490 571 V630" fill="none" stroke-width="2.5"/>
 <path d="M490 692 V750" fill="none" stroke-width="2.5"/>
