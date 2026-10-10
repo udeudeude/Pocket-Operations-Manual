@@ -12,7 +12,7 @@
     "5":"acdfg", "6":"acdefg", "7":"abc", "8":"abcdefg", "9":"abcdfg",
     "A":"abcefg","B":"cdefg","C":"adef","D":"bcdeg","E":"adefg",
     "F":"aefg","G":"acdef","H":"bcefg","I":"bc","J":"bcde",
-    "L":"def","N":"ceg","O":"abcdef","P":"abefg","R":"eg",
+    "L":"def","M":"abcef","N":"ceg","O":"abcdef","P":"abefg","R":"eg",
     "S":"acdfg","T":"defg","U":"bcdef","V":"cde","Y":"bcdfg",
     "-":"g","_":"d"," ":""
   };
@@ -91,16 +91,22 @@
     return pending;
   }
   function outputText(state,armed,extra) {
-    const bpm = Math.max(0,Math.min(999,Math.round(Number(state.bpm)||120)));
-    const tempo = String(bpm).padStart(3,"0");
-    const two = n => String(Math.max(0,Math.min(99,Number(n)||0))).padStart(2,"0");
-    if (extra?.recording) return "REC "+two(extra.slot || state.sound);
-    if (armed==="sound") return "S"+two(state.sound)+" "+tempo;
-    if (armed==="pattern") return "P"+two(state.pattern)+" "+tempo;
-    if (armed==="fx") return "F"+two(state.voice)+" "+tempo;
-    if (armed==="bpm") return "B"+two(state.volume)+" "+tempo;
-    if (state.fx >= 9 && armed==="fx") return "F"+two(state.fx)+" "+tempo;
-    return "P"+two(state.pattern)+" "+tempo;
+    const bpm=Math.max(0,Math.min(999,Math.round(Number(state.bpm)||120)));
+    const tempo=String(bpm).padStart(3,"0");
+    const two=n=>String(Math.max(0,Math.min(99,Number(n)||0))).padStart(2,"0");
+    const mode=armed || state.lcdView || "pattern";
+    if(extra?.recording) return "REC "+two(extra.slot||state.sound);
+    switch(mode){
+      case "sound": return "S"+two(state.sound)+" "+tempo;
+      case "pattern": return "P"+two(state.pattern)+" "+tempo;
+      case "voice": case "fx": return (mode==="voice"||Number(state.fx)<9?"V"+two(state.voice):"F"+two(state.fx))+" "+tempo;
+      case "bpm": case "volume": return "B"+two(state.volume)+" "+tempo;
+      case "tempo": return "BPM "+tempo;
+      case "record": return "REC "+two(state.sound);
+      case "parameter": return "A"+two(state.knobA)+" B"+two(state.knobB);
+      case "note": return "N"+two(state.lastPad||1)+" S"+two(state.sound);
+      default: return "P"+two(state.pattern)+" "+tempo;
+    }
   }
   function setDigits(value) {
     const text = String(value).toUpperCase().padEnd(7," ").slice(0,7);
@@ -175,6 +181,7 @@
     return testMode;
   }
   function nextTestSegment() {
+    if(testMode!=="walk")testIndex=-1;
     testMode="walk";testIndex=(testIndex+1)%(49+32+controllableArt.length+2);
     if(lastState)render(lastState,lastArmed,lastExtra);
     return testIndex;
