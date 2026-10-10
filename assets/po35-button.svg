@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="460" viewBox="0 0 92 92" role="img" aria-labelledby="title desc">
+<title id="title">PO-35 step button</title>
+<desc id="desc">Black circular outer housing with a white rounded-square inset and black circular center.</desc>
+<circle cx="46.5" cy="46.5" r="35.5" fill="#000"/>
+<path d="M25 20.5 H68 C70.2 20.5 71.2 22.6 71.2 24.5 V66.6 C71.2 69.1 69.8 70.6 67.5 70.6 H54.5 V72.5 H38.3 V70.6 H25 C22.2 70.6 21 69.1 21 66.4 V24.6 C21 21.8 22.4 20.5 25 20.5 Z" fill="#fff"/>
+<circle cx="46.4" cy="46.8" r="12.9" fill="#000"/>
+</svg>
