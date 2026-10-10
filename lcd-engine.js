@@ -25,7 +25,7 @@
     f:"2,2 5,6 5,19 2,22 0,19 0,5",
     g:"4,24 8,22 17,22 21,24 17,26 8,26"
   };
-  let root = null, runtime = null, cells = [], segments = [], svgPaths = [];
+  let root = null, runtime = null, cells = [], segments = [], svgPaths = [], controllableArt = [];
   let lastState = null, lastArmed = null, lastExtra = null;
   let testMode = null, testIndex = 0, pending = null, lastFailure = null;
   const create = (name, attrs={}) => {
@@ -82,6 +82,7 @@
       root = document.querySelector(".instrument-stage svg.instrument-vector");
       if (!root) throw Error("Could not mount interactive SVG");
       svgPaths = Array.from(root.querySelectorAll("#lcd-artwork path[id]"));
+      controllableArt = svgPaths.filter(path => path.parentElement?.id !== "digital-readout");
       drawCells();
       if (lastState) render(lastState,lastArmed,lastExtra);
       else render({pattern:1,sound:1,voice:1,bpm:120,volume:10,step:0,playing:false,write:false,bank:0,patterns:Array.from({length:16},()=>Array(16).fill(false))},null,{});
@@ -115,9 +116,14 @@
     // Original traced paths remain individual DOM elements; none is a bitmap.
     // Every inactive segment is 1.8% visible, including the unused original digits.
     for (const path of svgPaths) path.style.opacity = String(OFF);
-    if (testMode==="off" || testMode==="walk") return;
+    if (testMode==="off") return;
+    if (testMode==="walk") {
+      const index=testIndex-49-32;
+      if (index>=0 && index<controllableArt.length) illuminate(controllableArt[index],true);
+      return;
+    }
     if (testMode==="all") {
-      svgPaths.forEach(p=>illuminate(p,true));
+      controllableArt.forEach(p=>illuminate(p,true));
       return;
     }
     const lit = id => illuminate(element("lcd-shape-"+String(id).padStart(3,"0")),true);
@@ -143,9 +149,9 @@
   function drawStepBars(state) {
     const pattern=state.patterns?.[(Number(state.pattern)||1)-1]||[];
     for(let i=0;i<16;i++){
-      const active = testMode==="all" || (testMode==="walk" && testIndex===49+i) ||
-        (testMode===null && (Boolean(pattern[i]) || (state.playing && state.step===i)));
-      ["top","bottom"].forEach(position=>{
+      ["top","bottom"].forEach((position,row)=>{
+        const active = testMode==="all" || (testMode==="walk" && testIndex===49+row*16+i) ||
+          (testMode===null && (Boolean(pattern[i]) || (state.playing && state.step===i)));
         const rect=element("lcd-"+position+"-step-"+(i+1));
         if(!rect)return;
         rect.style.opacity=active?String(ON):String(OFF);
@@ -159,8 +165,8 @@
     drawNativeArt(state,armed,extra);
     drawStepBars(state);
     setDigits(outputText(state,armed,extra));
-    illuminate(element("lcd-write-flag"),testMode==="all" || (testMode===null&&!!state.write));
-    illuminate(element("lcd-record-flag"),testMode==="all" || (testMode===null&&!!extra?.recording));
+    illuminate(element("lcd-write-flag"),testMode==="all" || (testMode==="walk" && testIndex===49+32+controllableArt.length) || (testMode===null&&!!state.write));
+    illuminate(element("lcd-record-flag"),testMode==="all" || (testMode==="walk" && testIndex===49+32+controllableArt.length+1) || (testMode===null&&!!extra?.recording));
   }
   function setTest(mode) {
     if(![null,"all","off","walk"].includes(mode)) throw Error("Unknown LCD test mode");
@@ -169,12 +175,12 @@
     return testMode;
   }
   function nextTestSegment() {
-    testMode="walk";testIndex=(testIndex+1)%65;
+    testMode="walk";testIndex=(testIndex+1)%(49+32+controllableArt.length+2);
     if(lastState)render(lastState,lastArmed,lastExtra);
     return testIndex;
   }
   function diagnostics(){
-    return {mounted:Boolean(root),segments:segments.length,originalPaths:svgPaths.length,
+    return {mounted:Boolean(root),segments:segments.length,originalPaths:svgPaths.length,individuallyAddressableParts:49+32+controllableArt.length+2,
       independentlyControlledLedRects:root?.querySelectorAll('[id^="lcd-top-step-"],[id^="lcd-bottom-step-"]').length||0,
       inactiveOpacity:OFF,mode:testMode,testIndex,display:outputText(lastState||{},lastArmed,lastExtra),error:lastFailure};
   }
