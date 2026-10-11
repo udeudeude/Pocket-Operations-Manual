@@ -16,7 +16,7 @@ const model=new window.PO35Model(data),s=model.s;
 const recordings=new Map(),audio=new window.PO35SoundEngine(slot=>recordings.get(slot));
 let db=null,recorder=null,recStream=null,recordStopTimer=null,recordSlot=1;
 let tab="learn",lessonIndex=0,armed=null,held=new Set(),used=new Set(),pressedPad=null;
-let fxLastTap=0,fxLatchTimer=null,patternGesture=[],patternHeld=false;
+let fxLastTap=0,fxLatchTimer=null,fxTapTimer=null,performanceFxUsed=false,patternGesture=[],patternHeld=false;
 let sequencerTimer=null,nextAudioTime=0,stepPointer=0,lastStepPosition=0,refreshTime=0;
 let lessonCompleted=false,undo=null,latestEvent="";
 const lessons=[
@@ -130,6 +130,7 @@ function selectVoice(n){
  emit("voice:"+n);persist();
 }
 function selectEffect(n){
+ if(n===16&&s.write){clearEffects();return}
  if(n===14&&s.playing){stepPointer=0;nextAudioTime=audio.context().currentTime+.035;s.step=0;notify("RETRIGGER · pattern restarted")}
  else notify("FX "+n+" · "+fxLabel(n));
  model.fx(n,s.write&&s.playing?s.step:undefined);
@@ -193,7 +194,7 @@ function performChord(mod,n,physical=false){
  if(mod==="bpm"){setVolume(n);return}
  if(mod==="fx"){
   if(n<=8)selectVoice(n);
-  else selectEffect(n);
+  else {selectEffect(n);if(physical&&n>=9&&n<=15&&!s.write)performanceFxUsed=true;}
   return;
  }
  if(mod==="record"){
@@ -255,12 +256,19 @@ function buttonUp(k,e){
    patternGesture=[];patternHeld=false;
  }
  if(k==="record"&&recorder&&recordMode==="held")stopRecording();
- if(wasUsed){persist();render();return}
+ if(wasUsed){
+   if(k==="fx"&&performanceFxUsed){performanceFxUsed=false;if(!s.write){s.effect=16;s.lcdView="fx";notify("PERFORMANCE FX released; effect off.")}}
+   persist();render();return
+ }
  if(k==="fx"){
    const now=Date.now();
-   if(armed==="fx"&&!held.has("fx")){fxLastTap=0;notify("FX armed · choose voice 1–8 or effect 9–16.");render();return}
-   if(now-fxLastTap<450){armed="fx";fxLastTap=0;notify("FX armed · choose a pad.");}
-   else{fxLastTap=now;toggleBank()}
+   if(armed==="fx"&&!held.has("fx")){fxLastTap=0;clearTimeout(fxTapTimer);fxTapTimer=null;notify("FX armed · choose voice 1–8 or effect 9–16.");render();return}
+   if(now-fxLastTap<450){clearTimeout(fxTapTimer);fxTapTimer=null;armed="fx";fxLastTap=0;notify("FX armed · choose a pad.");}
+   else{
+     fxLastTap=now;
+     clearTimeout(fxTapTimer);
+     fxTapTimer=setTimeout(()=>{fxTapTimer=null;fxLastTap=0;if(armed!=="fx"&&!held.has("fx"))toggleBank()},350);
+   }
  }else if(k==="bpm"){
    model.presetTempo();notify("TEMPO "+s.bpm+" BPM");emit("tempo");persist();
  }else if(k==="play")transport();
@@ -290,28 +298,13 @@ function attachControl(b,k){
 }
 function buildHotspots(){
  const host=get("instrument-hit-overlay"),x0=20,y0=185,W=490,H=848;
- const xs=[91,199,309,420,532],ys=[670,795,920,1046,1170];
- // Artwork viewBox uses source coordinates 20..510, 185..1033.
- // Use positions measured from the 490-unit source before its viewBox crop.
- const centers=[91,199,309,420,532].map((x,i)=>[91,179,265,352,439][i]);
- const rows=[676,801,927,1052,1178].map((x,i)=>[676,802,927,1052,1178][i]); 
- // Source SVG actual center locations: 90/199/309/420/530 scaled to its native
- // 530px reference. The SVG canvas is 490px viewBox 20..510, so panel controls
- // must use the traced 90/199/309/420/532 geometry mapped in this page.
- // Final percentages explicitly match front artwork positions.
- const pct=(x,y)=>({left:x+"%",top:y+"%"});
+ // All controls use original SVG source coordinates in viewBox 20 185 490 848.
  const button=(key,title,x,y,width=16,height=8)=>{
   const b=document.createElement("button");b.type="button";b.className="instrument-hit";
   b.dataset.control=key;b.title=title;b.setAttribute("aria-label",title);
   Object.assign(b.style,{left:x+"%",top:y+"%",width:width+"%",height:height+"%"});
   host.append(b);attachControl(b,key);return b;
  };
- const columns=[14.5,36.5,58.5,80.5,96.5];
- // Use real artwork visual references. This percent geometry is calibrated
- // relative to the cropped SVG, not to the original hanging tab.
- const col=[14.5,36.2,57.7,79.5,97.3];
- // The 5th column should align at 85%, not spill outside the instrument.
- col[0]=14.5;col[1]=36.5;col[2]=58.1;col[3]=79.4;col[4]=85.6;
  // Five-column physical layout in the 490-unit viewBox (91,179,265,352,439):
  const xvals=[(91-20)/490*100,(179-20)/490*100,(265-20)/490*100,(352-20)/490*100,(439-20)/490*100];
  const yvals=[(551-185)/848*100,(652-185)/848*100,(751-185)/848*100,(851-185)/848*100,(950-185)/848*100];
