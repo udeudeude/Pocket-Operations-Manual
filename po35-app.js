@@ -33,7 +33,7 @@ const lessons=[
  ["Stop the pattern","Tap PLAY again to stop.","play:off","play"],
  ["Change tempo","Tap BPM to select another preset tempo.","tempo","bpm"],
  ["Change volume","Hold BPM and press pad 5, or hold BPM to use the one-handed gesture.","volume:5","bpm"],
- ["Performance effect","Double-tap FX and press pad 9 for STUTTER SWEEP. The audio will actually stutter.","effect:9","fx"],
+ ["Performance effect","Double-tap FX, press pad 9 for STUTTER SWEEP, then play a pad or start the sequencer to hear the repetitions.","effect:9","fx"],
  ["Clear the effect","Double-tap FX and press 16 to select NO EFFECT.","effect:16","fx"],
  ["Change pattern","Tap PATTERN, then 2, to switch patterns.","pattern:2","pattern"],
  ["Chain patterns","Use PLAY → Edit chain, or hold PATTERN and tap multiple pads in sequence.","chain","pattern"],
@@ -196,7 +196,7 @@ function performChord(mod,n,physical=false){
  if(mod==="bpm"){setVolume(n);return}
  if(mod==="fx"){
   if(n<=8)selectVoice(n);
-  else {selectEffect(n);if(physical&&n>=9&&n<=15&&!s.write)performanceFxUsed=true;}
+  else {selectEffect(n);if(physical&&n>=9&&n<=15)performanceFxUsed=true;}
   return;
  }
  if(mod==="record"){
@@ -260,7 +260,7 @@ function buttonUp(k,e){
  }
  if(k==="record"&&recorder&&recordMode==="held")stopRecording();
  if(wasUsed){
-   if(k==="fx"&&performanceFxUsed){performanceFxUsed=false;if(!s.write){s.effect=16;s.lcdView="fx";notify("PERFORMANCE FX released; effect off.")}}
+   if(k==="fx"&&performanceFxUsed){performanceFxUsed=false;s.effect=16;s.lcdView="fx";notify("PERFORMANCE FX released; effect off. Recorded locks remain.")}
    persist();render();return
  }
  if(k==="fx"){
