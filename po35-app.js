@@ -183,6 +183,7 @@ function padSolo(n){
 }
 function performChord(mod,n,physical=false){
  used.add(mod);
+ if(physical&&armed===mod)armed=null;
  if(mod==="sound"){setSound(n);return}
  if(mod==="pattern"){
   if(physical){
@@ -244,6 +245,7 @@ function buttonDown(k,e){
  if(k==="pattern"){patternGesture=[];patternHeld=true}
  modifierCombo(k);
  if(k==="fx"){
+  if(fxTapTimer){clearTimeout(fxTapTimer);fxTapTimer=null}
   clearTimeout(fxLatchTimer);
   fxLatchTimer=setTimeout(()=>{if(held.has("fx")&&!used.has("fx")){armed="fx";notify("FX armed · select pad 1–16.");render()}},550);
  }
@@ -264,11 +266,11 @@ function buttonUp(k,e){
  if(k==="fx"){
    const now=Date.now();
    if(armed==="fx"&&!held.has("fx")){fxLastTap=0;clearTimeout(fxTapTimer);fxTapTimer=null;notify("FX armed · choose voice 1–8 or effect 9–16.");render();return}
-   if(now-fxLastTap<450){clearTimeout(fxTapTimer);fxTapTimer=null;armed="fx";fxLastTap=0;notify("FX armed · choose a pad.");}
+   if(now-fxLastTap<460){clearTimeout(fxTapTimer);fxTapTimer=null;armed="fx";fxLastTap=0;notify("FX armed · choose a pad.");}
    else{
      fxLastTap=now;
      clearTimeout(fxTapTimer);
-     fxTapTimer=setTimeout(()=>{fxTapTimer=null;fxLastTap=0;if(armed!=="fx"&&!held.has("fx"))toggleBank()},350);
+     fxTapTimer=setTimeout(()=>{fxTapTimer=null;fxLastTap=0;if(armed!=="fx"&&!held.has("fx"))toggleBank()},460);
    }
  }else if(k==="bpm"){
    model.presetTempo();notify("TEMPO "+s.bpm+" BPM");emit("tempo");persist();
