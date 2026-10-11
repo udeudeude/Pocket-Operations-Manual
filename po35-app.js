@@ -216,18 +216,23 @@ function handlePad(n,physical=true){
  padSolo(n);
 }
 function modifierCombo(k){
+ if((k==="sound"&&held.has("pattern"))||(k==="pattern"&&held.has("sound"))){
+   used.add("sound");used.add("pattern");s.lcdView="alarm";render();
+   notify("ALARM SETUP: available on the physical PO-35; the web simulator cannot power on independently for an alarm.");
+   return true;
+ }
  if(k==="pattern"&&held.has("record")||k==="record"&&held.has("pattern")){used.add("pattern");used.add("record");clearPattern();return true}
  if(k==="bpm"&&held.has("record")||k==="record"&&held.has("bpm")){
-  used.add("bpm");used.add("record");s.sync=(s.sync+1)%6;notify("SYNC SY"+s.sync+" · display only; hardware sync unavailable.");persist();render();return true
+  used.add("bpm");used.add("record");s.sync=(s.sync+1)%6;s.lcdView="sync";notify("SYNC SY"+s.sync+" · display only; hardware sync unavailable.");persist();render();return true
  }
  if(k==="sound"&&held.has("bpm")||k==="bpm"&&held.has("sound")){
-  used.add("sound");used.add("bpm");notify("BATTERY: web simulator cannot read the PO-35 battery.");return true
+  used.add("sound");used.add("bpm");s.lcdView="battery";render();notify("BATTERY: web simulator cannot read the PO-35 battery.");return true
  }
  if(k==="sound"&&held.has("write")||k==="write"&&held.has("sound")){
-  used.add("sound");used.add("write");notify("DATA TRANSMIT: real PO-35 uses stereo audio backup. Use STUDIO → Export for app patterns.");return true
+  used.add("sound");used.add("write");s.lcdView="data";render();notify("DATA TRANSMIT: real PO-35 uses stereo audio backup. Use STUDIO → Export for app patterns.");return true
  }
  if(k==="sound"&&held.has("record")||k==="record"&&held.has("sound")){
-  used.add("sound");used.add("record");notify("DATA RECEIVE: hardware audio decoding not implemented.");return true
+  used.add("sound");used.add("record");s.lcdView="data";render();notify("DATA RECEIVE: hardware audio decoding not implemented.");return true
  }
  return false;
 }
