@@ -89,7 +89,7 @@ class PO35SoundEngine {
   play(options={}){
     const c=this.context(),now=c.currentTime,t=Math.max(now+.002,options.when??now+.002);
     const slot=clamp(options.slot??1,1,16)|0,note=clamp(options.note??8,1,16)|0;
-    const voice=clamp(options.voice??1,1,8)|0,fx=clamp(options.effect??16,9,16)|0;
+    const voice=slot===16?1:(clamp(options.voice??1,1,8)|0),fx=clamp(options.effect??16,9,16)|0;
     const bank=options.bank?1:0,a=clamp(options.a??50,0,100),b=clamp(options.b??50,0,100);
     const volume=clamp(options.volume??5,0,16),transpose=clamp(options.transpose??0,-24,24);
     const scale=options.scaleOffsets||[0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26];
