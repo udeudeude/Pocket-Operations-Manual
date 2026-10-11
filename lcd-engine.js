@@ -99,10 +99,15 @@
     switch(mode){
       case "sound": return "S"+two(state.sound)+" "+tempo;
       case "pattern": return "P"+two(state.pattern)+" "+tempo;
-      case "voice": case "fx": return (mode==="voice"||Number(state.fx)<9?"V"+two(state.voice):"F"+two(state.fx))+" "+tempo;
+      case "voice": return "V"+two(state.voice)+" "+tempo;
+      case "fx": return "F"+two(state.effect||16)+" "+tempo;
       case "bpm": case "volume": return "B"+two(state.volume)+" "+tempo;
       case "tempo": return "BPM "+tempo;
       case "record": return "REC "+two(state.sound);
+      case "sync": return "SY"+String(Number(state.sync)||0)+" "+tempo;
+      case "battery": return "BATT---";
+      case "alarm": return "ALARM  ";
+      case "data": return "DATA---";
       case "parameter": return "A"+two(state.knobA)+" B"+two(state.knobB);
       case "note": return "N"+two(state.lastPad||1)+" S"+two(state.sound);
       default: return "P"+two(state.pattern)+" "+tempo;
