@@ -7,7 +7,7 @@ const VOICES=["neutral","autotune","retro","noise","robot","fifth","vocoder","sy
 const EFFECTS={9:"stutter sweep",10:"trance gate",11:"half rate",12:"16 bar build up",13:"6/8 quantize",14:"retrigger pattern",15:"reverse",16:"no effect"};
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,Number(n)||0));
 class PO35SoundEngine {
-  constructor(getSample){this.getSample=getSample||(()=>null);this.audioContext=null;this.master=null;this.demo=new Map();this.reverseCache=new WeakMap();this.drumCache=new Map();this.whiteNoise=null;}
+  constructor(getSample){this.getSample=getSample||(()=>null);this.audioContext=null;this.master=null;this.demo=new Map();this.reverseCache=new WeakMap();this.drumCache=new Map();this.whiteNoise=null;this.active=[];}
   context(){
     if(!this.audioContext){
       const C=root.AudioContext||root.webkitAudioContext;
@@ -19,6 +19,21 @@ class PO35SoundEngine {
     }
     if(this.audioContext.state==="suspended")this.audioContext.resume();
     return this.audioContext;
+  }
+  updateLive({bank=0,a=50,b=50}={}){
+    if(!this.audioContext)return;
+    const now=this.audioContext.currentTime;
+    this.active=this.active.filter(v=>v.end>now);
+    for(const v of this.active){
+      if(bank===0){
+        v.tone.frequency.setTargetAtTime(clamp(300+Math.pow(b/100,1.2)*2800,300,3100),now,.025);
+        const ratio=Math.pow(2,(a-v.a)/72);
+        v.sources.forEach(src=>{if(src.playbackRate?.setTargetAtTime&&src._originalRate)src.playbackRate.setTargetAtTime(clamp(src._originalRate*ratio,.15,5),now,.025)});
+      }else{
+        const factor=(.5+b/100)/(.5+v.b/100);
+        v.sources.forEach(src=>{if(src.playbackRate?.setTargetAtTime&&src._originalRate)src.playbackRate.setTargetAtTime(clamp(src._originalRate*factor,.15,5),now,.025)});
+      }
+    }
   }
   silence(){if(this.audioContext&&this.master){this.master.gain.cancelScheduledValues(this.audioContext.currentTime);this.master.gain.setTargetAtTime(.48,this.audioContext.currentTime,.015)}}
   noiseBuffer(){
@@ -130,7 +145,7 @@ class PO35SoundEngine {
     if(voice===7){const band=c.createBiquadFilter();band.type="bandpass";band.Q.value=.55;band.frequency.value=clamp(400+b*26,400,3000);stage.disconnect();stage.connect(band).connect(tone)}
     const sources=[];
     const makeSource=(time,start,dur,playRate,gain=.9)=>{
-      const src=c.createBufferSource(),g=c.createGain();src.buffer=buffer;src.playbackRate.value=clamp(playRate,.15,5);g.gain.value=gain;
+      const src=c.createBufferSource(),g=c.createGain();src.buffer=buffer;src.playbackRate.value=clamp(playRate,.15,5);src._originalRate=src.playbackRate.value;g.gain.value=gain;
       src.connect(g).connect(stage);src.start(time,clamp(start,0,Math.max(0,buffer.duration-.005)));
       const usable=(buffer.duration-start)/src.playbackRate.value;
       src.stop(time+Math.max(.005,Math.min(dur,usable)));
@@ -157,6 +172,8 @@ class PO35SoundEngine {
     if(voice===2){const shimmer=c.createDelay(.04);shimmer.delayTime.value=.012;const g=c.createGain();g.gain.value=.15;stage.connect(shimmer).connect(g).connect(tone)}
     if(fx===13){ // 6/8 treatment: accent 1-4-7 while quantization lives in the sequencer
       const trip=((options.step||0)%6);amp.gain.setValueAtTime(volumeAmp*(trip===0||trip===3?1:.54),t+.012)}
+    this.active.push({end:t+period,a,b,tone,sources});
+    this.active=this.active.filter(x=>x.end>now);
     return {time:t,duration:period,bufferKind:captured?"recording":slot===16?"tonic-drums":"synthetic-practice-voice",voice:VOICES[voice-1],effect:EFFECTS[fx],sources};
   }
 }
