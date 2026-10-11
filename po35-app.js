@@ -16,7 +16,7 @@ const model=new window.PO35Model(data),s=model.s;
 const recordings=new Map(),audio=new window.PO35SoundEngine(slot=>recordings.get(slot));
 let db=null,recorder=null,recStream=null,recordStopTimer=null,recordSlot=1;
 let tab="learn",lessonIndex=0,armed=null,held=new Set(),used=new Set(),pressedPad=null;
-let fxLastTap=0,fxLatchTimer=null,fxTapTimer=null,performanceFxUsed=false,patternGesture=[],patternHeld=false;
+let fxLastTap=0,fxLatchTimer=null,performanceFxUsed=false,patternGesture=[],patternHeld=false;
 let sequencerTimer=null,nextAudioTime=0,stepPointer=0,lastStepPosition=0,refreshTime=0;
 let lessonCompleted=false,undo=null,latestEvent="";
 const lessons=[
@@ -245,7 +245,6 @@ function buttonDown(k,e){
  if(k==="pattern"){patternGesture=[];patternHeld=true}
  modifierCombo(k);
  if(k==="fx"){
-  if(fxTapTimer){clearTimeout(fxTapTimer);fxTapTimer=null}
   clearTimeout(fxLatchTimer);
   fxLatchTimer=setTimeout(()=>{if(held.has("fx")&&!used.has("fx")){armed="fx";notify("FX armed · select pad 1–16.");render()}},550);
  }
@@ -265,13 +264,11 @@ function buttonUp(k,e){
  }
  if(k==="fx"){
    const now=Date.now();
-   if(armed==="fx"&&!held.has("fx")){fxLastTap=0;clearTimeout(fxTapTimer);fxTapTimer=null;notify("FX armed · choose voice 1–8 or effect 9–16.");render();return}
-   if(now-fxLastTap<460){clearTimeout(fxTapTimer);fxTapTimer=null;armed="fx";fxLastTap=0;notify("FX armed · choose a pad.");}
-   else{
-     fxLastTap=now;
-     clearTimeout(fxTapTimer);
-     fxTapTimer=setTimeout(()=>{fxTapTimer=null;fxLastTap=0;if(armed!=="fx"&&!held.has("fx"))toggleBank()},460);
-   }
+   if(armed==="fx"&&!held.has("fx")){fxLastTap=0;notify("FX armed · choose voice 1–8 or effect 9–16.");render();return}
+   if(now-fxLastTap<460){
+     fxLastTap=0;toggleBank(); // Undo the bank change of the first tap.
+     armed="fx";notify("FX armed · choose a pad.");
+   }else{fxLastTap=now;toggleBank()} // Physical FX tap is immediate.
  }else if(k==="bpm"){
    model.presetTempo();notify("TEMPO "+s.bpm+" BPM");emit("tempo");persist();
  }else if(k==="play")transport();
