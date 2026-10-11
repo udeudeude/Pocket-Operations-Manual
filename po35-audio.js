@@ -26,7 +26,8 @@ class PO35SoundEngine {
     this.active=this.active.filter(v=>v.end>now);
     for(const v of this.active){
       if(bank===0){
-        v.tone.frequency.setTargetAtTime(clamp(300+Math.pow(b/100,1.2)*2800,300,3100),now,.025);
+        v.tone.frequency.setTargetAtTime(clamp(260+b*10,260,1260),now,.025);
+        v.tone2?.frequency.setTargetAtTime(clamp(850+b*25,850,3350),now,.025);
         const ratio=Math.pow(2,(a-v.a)/72);
         v.sources.forEach(src=>{if(src.playbackRate?.setTargetAtTime&&src._originalRate)src.playbackRate.setTargetAtTime(clamp(src._originalRate*ratio,.15,5),now,.025)});
       }else{
@@ -119,11 +120,14 @@ class PO35SoundEngine {
     if(fx===15)buffer=this.reverse(buffer);
     const at=bank?Math.min(buffer.duration*.85,buffer.duration*a/115):0;
     const period=Math.min(1.2,Math.max(.06,(buffer.duration-at)/rate));
-    const stage=c.createGain(),fxStage=c.createGain(),amp=c.createGain(),tone=c.createBiquadFilter();
-    tone.type="peaking";tone.Q.value=1.2;
-    tone.frequency.value=clamp(300+Math.pow(b/100,1.2)*2800,300,3100);
-    tone.gain.value=(voice===3?-7:voice===7?9:5);
-    stage.connect(tone).connect(fxStage).connect(amp).connect(this.master);
+    const stage=c.createGain(),fxStage=c.createGain(),amp=c.createGain(),tone=c.createBiquadFilter(),tone2=c.createBiquadFilter();
+    tone.type="peaking";tone.Q.value=2.1;
+    tone.frequency.value=clamp(260+b*10,260,1260);
+    tone.gain.value=(voice===3?3:voice===7?12:9);
+    tone2.type="peaking";tone2.Q.value=2.4;
+    tone2.frequency.value=clamp(850+b*25,850,3350);
+    tone2.gain.value=voice===7?10:6;
+    stage.connect(tone).connect(tone2).connect(fxStage).connect(amp).connect(this.master);
     const volumeAmp=(volume/16)*.65;
     amp.gain.setValueAtTime(.0001,t);amp.gain.linearRampToValueAtTime(Math.max(.0001,volumeAmp),t+.009);
     amp.gain.setTargetAtTime(.0001,t+period*.78,.05);
@@ -133,7 +137,7 @@ class PO35SoundEngine {
     } else if(fx===12){ // build-up sweeps the spectrum over sixteen measures
       const progress=clamp((options.bar??0)%16/15,0,1),filter=c.createBiquadFilter();
       filter.type="lowpass";filter.frequency.setValueAtTime(250+progress*13000,t);
-      stage.disconnect();stage.connect(filter).connect(tone);
+      fxStage.disconnect();fxStage.connect(filter).connect(amp);
       amp.gain.setValueAtTime(.0001,t);amp.gain.linearRampToValueAtTime(Math.max(.0001,volumeAmp*(.26+.74*progress)),t+.01);
     } else if(fx===9){ // stutter-sweep repeats a short sliver
       const filter=c.createBiquadFilter();filter.type="lowpass";
@@ -172,7 +176,7 @@ class PO35SoundEngine {
     if(voice===2){const shimmer=c.createDelay(.04);shimmer.delayTime.value=.012;const g=c.createGain();g.gain.value=.15;stage.connect(shimmer).connect(g).connect(tone)}
     if(fx===13){ // 6/8 treatment: accent 1-4-7 while quantization lives in the sequencer
       const trip=((options.step||0)%6);amp.gain.setValueAtTime(volumeAmp*(trip===0||trip===3?1:.54),t+.012)}
-    this.active.push({end:t+period,a,b,tone,sources});
+    this.active.push({end:t+period,a,b,tone,tone2,sources});
     this.active=this.active.filter(x=>x.end>now);
     return {time:t,duration:period,bufferKind:captured?"recording":slot===16?"tonic-drums":"synthetic-practice-voice",voice:VOICES[voice-1],effect:EFFECTS[fx],sources};
   }
