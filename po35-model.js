@@ -21,7 +21,7 @@ function norm2(x,gen,validate) {
  return range(16,i=>range(16,j=>validate?.(x?.[i]?.[j])?x[i][j]:gen(i,j)));
 }
 const defaults=()=>({
- sound:1,pattern:1,voice:1,effect:16,write:false,playing:false,bpm:120,volume:5,
+ sound:1,pattern:1,voice:1,soundVoices:range(16,()=>1),effect:16,write:false,playing:false,bpm:120,volume:5,
  bank:0,params:[[50,50],[0,50]],swing:0,transpose:0,scale:0,
  patterns:range(16,empty16),notes:range(16,()=>range(16,()=>8)),
  sounds:range(16,()=>range(16,()=>1)),voices:range(16,()=>range(16,()=>0)),
@@ -39,6 +39,7 @@ class PO35Model {
   s.notes=norm2(x.notes,()=>8,v=>Number.isInteger(v)&&v>=1&&v<=16);
   s.sounds=norm2(x.sounds,(i,j)=>x.sound||1,v=>Number.isInteger(v)&&v>=1&&v<=16);
   s.voices=norm2(x.voices,()=>0,v=>Number.isInteger(v)&&v>=0&&v<=8);
+  s.soundVoices=range(16,i=>Number.isInteger(x.soundVoices?.[i])&&x.soundVoices[i]>=1&&x.soundVoices[i]<=8?x.soundVoices[i]:(x.voice||1));
   s.effects=norm2(x.effects,()=>0,v=>Number.isInteger(v)&&v>=0&&v<=16);
   s.locks=norm2(x.locks,()=>null,v=>v===null||typeof v==="object");
   s.multipliers=norm2(x.multipliers,()=>1,v=>[1,2,4,8].includes(v));
@@ -62,10 +63,10 @@ class PO35Model {
  presetTempo(){const list=[80,120,140],at=list.indexOf(this.s.bpm);this.tempo(list[(at+1)%3]);return this.s.bpm}
  transpose(value){this.s.transpose=clamp(Math.round(value),-24,24);this.s.lcdView="note"}
  scale(value){this.s.scale=((Math.round(value)%scales.length)+scales.length)%scales.length;this.s.lcdView="note"}
- setSound(n){this.s.sound=clamp(n,1,16)|0;this.s.lcdView="sound"}
+ setSound(n){this.s.sound=clamp(n,1,16)|0;this.s.voice=this.s.soundVoices[this.s.sound-1]||1;this.s.lcdView="sound"}
  setPattern(n){this.s.pattern=clamp(n,1,16)|0;this.s.lcdView="pattern"}
  setVolume(n){this.s.volume=clamp(n,0,16)|0;this.s.lcdView="volume"}
- voice(n,step){const s=this.s;s.voice=clamp(n,1,8)|0;s.lcdView="voice";if(Number.isInteger(step)&&s.write)s.voices[s.pattern-1][step]=s.voice}
+ voice(n,step){const s=this.s;s.voice=clamp(n,1,8)|0;s.soundVoices[s.sound-1]=s.voice;s.lcdView="voice";if(Number.isInteger(step)&&s.write)s.voices[s.pattern-1][step]=s.voice}
  fx(n,step){const s=this.s;s.effect=clamp(n,9,16)|0;s.lcdView="fx";if(Number.isInteger(step)&&s.write){if(s.effect===16)this.clearFX();else s.effects[s.pattern-1][step]=s.effect}}
  clearFX(pattern=this.s.pattern){this.s.effects[pattern-1].fill(0);this.s.effect=16}
  toggleStep(n){const s=this.s,i=n-1,p=s.pattern-1;s.patterns[p][i]=!s.patterns[p][i];if(s.patterns[p][i]){s.notes[p][i]=n;s.sounds[p][i]=s.sound} s.lcdView="pattern";return s.patterns[p][i]}
@@ -81,7 +82,7 @@ class PO35Model {
  nextPatternInChain(){const s=this.s;if(s.chain.length){s.chainIndex=(s.chainIndex+1)%s.chain.length;s.pattern=s.chain[s.chainIndex]}return s.pattern}
  stepSnapshot(index,pattern=this.s.pattern){const s=this.s,i=index%16,p=pattern-1,lock=s.locks[p][i];
   return {active:s.patterns[p][i],note:s.notes[p][i],sound:s.sounds[p][i],
-   voice:s.voices[p][i]||s.voice,effect:s.effects[p][i]||s.effect,
+   voice:s.voices[p][i]||s.soundVoices[s.sounds[p][i]-1]||s.voice,effect:s.effects[p][i]||s.effect,
    bank:lock?.bank??s.bank,a:lock?.a??s.knobA,b:lock?.b??s.knobB,
    multiplier:s.multipliers[p][i],pattern,step:i,
    volume:s.volume,transpose:s.transpose,scaleOffsets:scales[s.scale].notes,bar:s.bar};
