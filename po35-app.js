@@ -157,6 +157,7 @@ function changeKnob(letter,value){
    emit("knob:"+letter);
    if(s.playing&&held.has("write")){model.parameterLock(s.step);emit("lock");notify(label+" · parameter lock recorded on step "+(s.step+1))}
  }
+ audio.updateLive({bank:s.bank,a:s.knobA,b:s.knobB});
  persist();render();
 }
 function makeNote(note,when,step){
@@ -378,6 +379,37 @@ async function loadRecordings(){
   };
  }catch(e){recordingStatus("Audio storage unavailable: "+e.message)}
 }
+function encodeWAV(buffer){
+ const channels=Math.min(2,buffer.numberOfChannels),count=buffer.length,sampleRate=buffer.sampleRate;
+ const bytes=44+count*channels*2,arr=new ArrayBuffer(bytes),view=new DataView(arr);
+ let at=0;
+ const str=value=>{for(let i=0;i<value.length;i++)view.setUint8(at++,value.charCodeAt(i))};
+ const u16=value=>{view.setUint16(at,value,true);at+=2};
+ const u32=value=>{view.setUint32(at,value,true);at+=4};
+ str("RIFF");u32(bytes-8);str("WAVE");str("fmt ");u32(16);u16(1);
+ u16(channels);u32(sampleRate);u32(sampleRate*channels*2);u16(channels*2);u16(16);
+ str("data");u32(count*channels*2);
+ const ch=Array.from({length:channels},(_,i)=>buffer.getChannelData(i));
+ for(let i=0;i<count;i++)for(let c=0;c<channels;c++){
+   const sample=Math.max(-1,Math.min(1,ch[c][i]));view.setInt16(at,sample<0?sample*0x8000:sample*0x7fff,true);at+=2;
+ }
+ return new Blob([arr],{type:"audio/wav"});
+}
+async function loadAudioFile(){
+ const file=get("sample-file")?.files?.[0],slot=+get("record-slot").value||1;
+ if(!file){recordingStatus("Choose an audio file before importing.");return}
+ if(file.size>40*1024*1024){recordingStatus("Choose an audio file smaller than 40 MB.");return}
+ try{
+   const decoded=await audio.context().decodeAudioData(await file.arrayBuffer());
+   const limit=Math.min(decoded.length,Math.floor(decoded.sampleRate*8));
+   if(limit<100){recordingStatus("Audio file contains no usable sound.");return}
+   const sample=audio.context().createBuffer(Math.min(decoded.numberOfChannels,2),limit,decoded.sampleRate);
+   for(let ch=0;ch<sample.numberOfChannels;ch++)sample.getChannelData(ch).set(decoded.getChannelData(ch).subarray(0,limit));
+   recordings.set(slot,sample);saveRecording(slot,encodeWAV(sample));model.setSound(slot);
+   recordingStatus("Imported "+sample.duration.toFixed(2)+"s of "+file.name+" into slot "+slot+". The rest, if any, was trimmed to 8 seconds.");
+   notify("SOUND "+slot+" · imported audio ready");emit("recorded");persist();
+ }catch(e){recordingStatus("Cannot decode this audio format on your browser: "+e.message)}
+}
 function saveRecording(slot,blob){
  if(!db)return;
  try{db.transaction("samples","readwrite").objectStore("samples").put(blob,slot)}catch(e){recordingStatus("Recorded, but permanent storage failed: "+e.message)}
@@ -469,6 +501,7 @@ function listeners(){
  if(get("chain-clear"))get("chain-clear").onclick=()=>setChain([]);
  if(get("fx-clear"))get("fx-clear").onclick=clearEffects;
  get("record").onclick=()=>startRecording(+get("record-slot").value,true);
+ get("load-audio").onclick=loadAudioFile;
  get("stop-record").onclick=stopRecording;
  get("play-record").onclick=()=>{const slot=+get("record-slot").value;if(!recordings.has(slot)){recordingStatus("No recorded voice in slot "+slot+". Press Record first.");return}
    const old=s.sound;s.sound=slot;makeNote(8);s.sound=old;render()
